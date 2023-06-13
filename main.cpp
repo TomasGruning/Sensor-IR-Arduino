@@ -4,7 +4,6 @@
 
 int sensorPin = 2;
 IRrecv irReceiver(sensorPin);
-decode_results irResults;
 
 void setup() {
   Serial.begin(9600);
@@ -13,9 +12,9 @@ void setup() {
 }
 
 void loop() {
-  if (irReceiver.decode(&irResults)) {
-    unsigned long irCode = irResults.value;
-    Serial.println(irCode);
+  if (irReceiver.decode()) {
+    unsigned long irCode = irReceiver.decodedIRData.decodedRawData;
+    Serial.println(irCode, HEX);
     irReceiver.resume();
   }
 }
