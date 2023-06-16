@@ -1,75 +1,41 @@
 #include <Arduino.h>
-/*
-#include <IRremote.h>
 
-
-int sensorPin = 2;
-IRrecv irReceiver(sensorPin);
+const int irReceiverPin = 2;
+volatile unsigned long irCode = 0;
+volatile bool irReceived = false;
 
 void setup() {
   Serial.begin(9600);
-  irReceiver.enableIRIn();
-  pinMode(sensorPin,INPUT);
+  attachInterrupt(digitalPinToInterrupt(irReceiverPin), onIRReceived, CHANGE);
 }
 
 void loop() {
-  if (irReceiver.decode()) {
-    unsigned long irCode = irReceiver.decodedIRData.decodedRawData;
+  if (irReceived) {
     Serial.println(irCode, HEX);
-    irReceiver.resume();
+    irReceived = false;
   }
 }
-*/
 
-// Constantes para la configuración del sensor IR
-const int sensorPin = 2;
+void onIRReceived() {
+  static unsigned long startTime = 0;
+  static unsigned int bitCount = 0;
+  static unsigned long receivedCode = 0;
 
-// Variables para almacenar los datos del sensor IR
-unsigned int irData = 0;
-unsigned int prevIrData = 0;
+  unsigned long elapsedTime = micros() - startTime;
 
-// Variables para el control del tiempo
-unsigned long prevTime = 0;
-const unsigned long debounceDelay = 100;
+  startTime = micros();
+  bitCount++;
 
-void setup() {
-  Serial.begin(9600);
-  pinMode(sensorPin, INPUT);
-}
-
-void loop() {
-  // Lee el valor del sensor IR
-  int irValue = digitalRead(sensorPin);
-
-  // Comprueba si hay un cambio en el estado del sensor
-  if (irValue != prevIrData) {
-    // Espera un tiempo de rebote para evitar falsos positivos
-    if (millis() - prevTime >= debounceDelay) {
-      // Actualiza el tiempo previo
-      prevTime = millis();
-
-      // Actualiza el estado previo del sensor
-      prevIrData = irValue;
-
-      // Comprueba el valor del sensor IR
-      if (irValue == HIGH) {
-        // Se ha detectado una señal IR (botón presionado)
-        // FALTA AGREGAR UNA FORMA DE QUE DETECTE LOS BOTONES PRESIONADOS
-
-        unsigned int irCode = getIrCode();
-
-        // Imprime el código hexadecimal en el Monitor Serie
-        Serial.print("Código hexadecimal: 0x");
-        Serial.println(irCode, HEX);
-      }
+  if (bitCount == 32) {
+    receivedCode = elapsedTime;
+  } else if (bitCount > 32) {
+    if (elapsedTime > 2000) {
+      irCode = receivedCode;
+      irReceived = true;
+      bitCount = 0;
+      receivedCode = 0;
+    } else {
+      receivedCode = (receivedCode << 1) | (elapsedTime > 1000);
     }
   }
-}
-
-// Función para obtener el código del botón
-unsigned int getIrCode() {
-  // FALTA AGREGAR UNA FORMA DE QUE DETECTE LOS BOTONES PRESIONADOS
-
-  // DEBE DEVOLVER EL VALOR DEL BOTÓN
-  //return ;
 }
